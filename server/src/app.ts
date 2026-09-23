@@ -1,5 +1,7 @@
 import express, { type Express, type Request, type Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { loadConfig, type Config } from "./config.js";
 import { createMcpServer } from "./mcp/server.js";
 
@@ -47,6 +49,24 @@ export function createApp(config: Config = loadConfig()): Express {
   });
   app.get("/mcp", methodNotAllowed);
   app.delete("/mcp", methodNotAllowed);
+
+  const indexHtml = path.join(config.publicDir, "index.html");
+  if (existsSync(indexHtml)) {
+    app.use(express.static(config.publicDir));
+    // SPA fallback for client-side console routes. /healthz and /mcp are
+    // matched by the routes above and never reach here.
+    app.get(/.*/, (_req, res) => {
+      res.sendFile(indexHtml);
+    });
+  } else {
+    // ADR-003: the console is built late in the class. Frank must deploy and
+    // serve MCP long before it exists.
+    app.get("/", (_req, res) => {
+      res
+        .type("text/plain")
+        .send("Frank is running. The console hasn't been built yet (ADR-003) — talk to him at POST /mcp.");
+    });
+  }
 
   return app;
 }
