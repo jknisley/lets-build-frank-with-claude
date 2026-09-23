@@ -20,13 +20,35 @@ async function startServer(): Promise<string> {
 }
 
 describe("POST /mcp", () => {
-  it("completes the MCP initialize handshake", async () => {
+  it("discovers and calls get_status over Streamable HTTP", async () => {
     const url = await startServer();
     const client = new Client({ name: "test-client", version: "0.0.0" });
     const transport = new StreamableHTTPClientTransport(new URL(url));
     await client.connect(transport);
 
-    expect(client.getServerVersion()).toEqual({ name: "frank", version: "0.1.0" });
+    const tools = await client.listTools();
+    expect(tools.tools.map((t) => t.name)).toContain("get_status");
+
+    const result = await client.callTool({ name: "get_status", arguments: {} });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      greeting: "Hi, I'm Frank.",
+    });
+
+    await client.close();
+  });
+
+  it("rejects unknown fields on get_status input", async () => {
+    const url = await startServer();
+    const client = new Client({ name: "test-client", version: "0.0.0" });
+    const transport = new StreamableHTTPClientTransport(new URL(url));
+    await client.connect(transport);
+
+    const result = await client.callTool({
+      name: "get_status",
+      arguments: { unexpected: "field" },
+    });
+    expect(result.isError).toBe(true);
 
     await client.close();
   });
