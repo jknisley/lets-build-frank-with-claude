@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Same-origin, relative /mcp (ADR-006): Frank serves this console himself,
 // so there is no VITE_FRANK_URL and no cross-origin request to configure.
@@ -24,6 +24,12 @@ function getClient(): Promise<Client> {
     });
   }
   return connected;
+}
+
+export async function listTools(): Promise<Tool[]> {
+  const client = await getClient();
+  const result = await client.listTools();
+  return result.tools;
 }
 
 export async function callTool(name: string, args: Record<string, unknown>): Promise<CallToolResult> {
